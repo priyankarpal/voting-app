@@ -47,12 +47,14 @@ const loginUser=async (req, res) => {
 // get user profile
 const userProfile=async (req, res) => {
   try {
-    const userData=req.user.id;
-    const user=await User.findById(userData);
-    res.status(200).json({ user });
+    const { id }=req.params;
+    const user=await User.findById(id);
+    // Remove the password field from the user object
+    const { password, ...userDataWithoutPassword }=user.toObject();
+    res.status(200).json({ user: userDataWithoutPassword });
   } catch (error) {
     console.log('problem', error);
-    res.staus(500).json({ error: 'Internal error' });
+    res.status(500).json({ error: 'Internal error' });
   }
 };
 // change user password
