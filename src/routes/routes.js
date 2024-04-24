@@ -25,6 +25,5 @@ router.get('/profile/:id', jwtAuth, userProfile);
 // routes for admins
 router.post('/', jwtAuth, createCandidate); // create a new candidate
 router.put('/:candidateId', jwtAuth, updateCandidate); // Update the candidate
-// router.delete('/:candidateId ', jwtAuth, deleteCandidate); // delete the candidate
 
 export default router;
