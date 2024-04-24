@@ -3,7 +3,6 @@ import { createCandidate, getallCandidate, updateCandidate, voteCandidate, voteC
 import {
   loginUser,
   signupUser,
-  userPassword,
   userProfile
 } from '../controllers/user.controller.js';
 import { jwtAuth } from "../middlewares/jwt.js";
@@ -11,7 +10,7 @@ import { jwtAuth } from "../middlewares/jwt.js";
 const router=express.Router();
 // user creation
 router.post('/signup', signupUser);
-router.post('/login', loginUser);
+router.post('/login', jwtAuth, loginUser);
 
 /// voting
 router.get('/', getallCandidate); // get all candidates
@@ -22,7 +21,6 @@ router.get('/vote/counts', voteCount); // to get all vote counts
 
 // user profile routes
 router.get('/profile/:id', jwtAuth, userProfile);
-router.put('/profile/password', jwtAuth, userPassword);
 
 // routes for admins
 router.post('/', jwtAuth, createCandidate); // create a new candidate
