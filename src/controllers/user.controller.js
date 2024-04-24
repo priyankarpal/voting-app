@@ -31,7 +31,7 @@ const loginUser=async (req, res) => {
     });
 
     if (!user||!(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'invalid username or password' });
+      return res.status(401).json({ error: 'invalid username or password' });
     }
 
     const payload={
@@ -57,28 +57,7 @@ const userProfile=async (req, res) => {
     res.status(500).json({ error: 'Internal error' });
   }
 };
-// change user password
-const userPassword=async (req, res) => {
-  try {
-    const userId=req.user.id;
-    const { currentPassword, newPassword }=req.body; // to change the password we need old password
-
-    const user=await User.findById(userId);
-    if (!(await user.comparePassword(currentPassword))) {
-      return res.status(401).json({ message: 'invalid password' });
-    }
-    user.password=newPassword;
-    await user.save();
-
-    res.status(200).json({ message: 'password updated' });
-  } catch (error) {
-    console.log('problem', error);
-    res.staus(500).json({ error: 'Internal error' });
-  }
-};
 
 
-
-
-export { loginUser, signupUser, userPassword, userProfile };
+export { loginUser, signupUser, userProfile };
 
