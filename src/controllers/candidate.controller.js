@@ -1,6 +1,6 @@
 import Candidate from '../model/candidate.model.js';
-import User from "../model/user.model.js";
-
+import User from '../model/user.model.js';
+import redisClient from '../redis/client.js';
 
 // check it is admin or not
 const checkAdmin=async (userId) => {
@@ -14,12 +14,13 @@ const checkAdmin=async (userId) => {
   }
 };
 
-
 // create a candidate
 const createCandidate=async (req, res) => {
   try {
     if (!(await checkAdmin(req.user.id))) {
-      return res.status(403).json({ error: "User has no access to admin role" });
+      return res
+        .status(403)
+        .json({ error: 'User has no access to admin role' });
     }
     const getCandidate=req.body;
     const newCandidate=new Candidate(getCandidate);
@@ -35,21 +36,25 @@ const createCandidate=async (req, res) => {
 // update the candidate
 const updateCandidate=async (req, res) => {
   try {
-
     if (!(await checkAdmin(req.user.id))) {
-      return res.status(403).json({ error: "User has no access to admin role" });
+      return res
+        .status(403)
+        .json({ error: 'User has no access to admin role' });
     }
 
     const candidateId=req.params.candidateId;
     const updateCandidate=req.body;
-    const response=await Candidate.findByIdAndUpdate(candidateId, updateCandidate, {
-      new: true,
-      runValidators: true
-    });
+    const response=await Candidate.findByIdAndUpdate(
+      candidateId,
+      updateCandidate,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!response) {
-      return res.status(403).json({ message: "candidate not found" });
-
+      return res.status(403).json({ message: 'candidate not found' });
     }
 
     res.status(200).json({ message: 'candidate updated', response });
@@ -100,37 +105,81 @@ const voteCandidate=async (req, res) => {
   }
 };
 
-
-// vote count 
+// vote count
 const voteCount=async (req, res) => {
-
   try {
-    const candidate=await Candidate.find().sort({ voteCount: "desc" }); // we can get all details from the candidates
-    const record=candidate.map((data) => {
-      return {
-        party: data.party,
-        voteCount: data.voteCount
-      };
-    });
-    res.status(200).json({ record });
+    redisClient.get('voteCounts', async (err, cachedData) => {
+      if (err) {
+        console.error('Redis Error:', err);
+      }
+      if (cachedData) {
+        // If data found in cache, return cached data
+        console.log('Vote Count Data found in Redis cache');
+        res.status(200).json(JSON.parse(cachedData));
+      } else {
+        console.log('Data not found in Redis cache, fetching from MongoDB');
 
+        try {
+          const candidate=await Candidate.find().sort({ voteCount: 'desc' }); // we can get all details from the candidates
+          const record=candidate.map((data) => {
+            return {
+              party: data.party,
+              voteCount: data.voteCount,
+            };
+          });
+
+          redisClient.set('voteCounts', JSON.stringify(record));
+          redisClient.expire('voteCounts', 30);
+
+          res.status(200).json({ record });
+        } catch (error) {
+          console.log('problem', error);
+          res.status(500).json({ error: 'redis error' });
+        }
+      }
+    });
   } catch (error) {
     console.log('problem', error);
     res.status(500).json({ error: 'Internal error' });
   }
-
 };
 
 // get all candidates
 const getallCandidate=async (req, res) => {
   try {
-    const data=await Candidate.find();
-    res.status(200).json(data);
+    // Check if data exists in Redis cache
+    redisClient.get('candidates', async (err, cachedData) => {
+      if (err) {
+        console.error('Redis Error:', err);
+      }
+
+      if (cachedData) {
+        // If data found in cache, return cached data
+        console.log('Data found in Redis cache');
+        res.status(200).json(JSON.parse(cachedData));
+      } else {
+        // If data not found in cache, fetch from MongoDB
+        console.log('Data not found in Redis cache, fetching from MongoDB');
+        const data=await Candidate.find();
+
+        // Store fetched data in Redis cache with expiration time (e.g., 1 hour)
+        redisClient.set('candidates', JSON.stringify(data));
+        redisClient.expire('candidates', 10);
+
+        res.status(200).json(data);
+      }
+    });
   } catch (error) {
-    console.log('problem', error);
+    console.log('Problem:', error);
     res.status(500).json({ error: 'Internal error' });
   }
 };
 
-export { createCandidate, getallCandidate, updateCandidate, voteCandidate, voteCount };
+export {
+  createCandidate,
+  getallCandidate,
+  updateCandidate,
+  voteCandidate,
+  voteCount
+};
 
